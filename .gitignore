@@ -8,7 +8,6 @@ __pycache__/
 
 .vscode
 data/
-notebooks/
 
 # Distribution / packaging
 .Python
