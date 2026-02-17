@@ -9,6 +9,7 @@ dependencies = [
     "imblearn>=0.0",
     "ipykernel>=7.1.0",
     "ipython>=9.8.0",
+    "lightgbm>=4.6.0",
     "matplotlib>=3.10.8",
     "numpy>=2.4.0",
     "pandas>=2.3.3",
