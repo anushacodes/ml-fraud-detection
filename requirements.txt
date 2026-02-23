@@ -1,0 +1,13 @@
+pandas
+scikit-learn
+xgboost
+kafka-python        
+fastapi             
+uvicorn             
+mlflow              
+prefect             
+evidently           
+redis               
+boto3               
+s3fs                
+psycopg2-binary     

@@ -1,0 +1,10 @@
+
+# data paths
+data:
+  train_path: "data/fraudTrain.csv"
+  test_path: "data/fraudTest.csv"
+  
+  X_train_path: "data/clean/X_train.csv"
+  X_test_path: "data/clean/X_test.csv"
+  y_train_path: "data/clean/y_train.csv"
+  y_test_path: "data/clean/y_test.csv"
