@@ -1,0 +1,78 @@
+# docker-compose.yml
+#
+# WHAT THIS FILE DOES:
+# This file is used by Docker to spin up all the infrastructure our pipeline needs (Kafka, Redis, MLflow, 
+# MinIO, Postgres, etc.) all at once, in isolated containers that can talk to each other.
+#
+# KAFKA CONCEPT (Beginner Friendly):
+# Kafka is essentially a high-throughput, real-time message bus. Imagine a busy restaurant kitchen. 
+# The ticket machine taking orders is the Kafka Producer. The line cooks reading the tickets are Kafka Consumers. 
+# The conveyor belt holding the tickets is the Kafka Topic. We need this because in the real world, 
+# fraud systems cannot wait for a batch file to finish uploading at midnight—they must score transactions 
+# the millisecond they occur. Kafka uses a tool called Zookeeper to help manage its state. 
+# So to run Kafka, you actually need TWO services: Zookeeper and Kafka broker.
+#
+# PREFECT CONCEPT (Beginner Friendly):
+# Prefect orchestration uses a local server to track flow runs. Imagine it as a highly sophisticated alarm 
+# clock and scheduler combined. We will eventually add a 'prefect-server' container here later to orchestrate our model retraining.
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # PHASE 2: Kafka & Zookeeper (The Messaging Backbone)
+  # ---------------------------------------------------------------------------
+  kafka:
+    image: confluentinc/cp-kafka:7.8.3
+    container_name: fraud-kafka
+    ports: -"9092:9092"
+
+    environment:
+      - KAFKA_KRAFT_MODE: 'true' # new alt to zookeeper  
+
+      - CLUSTER_ID: 'fraud-1234567890' # unique cluster id via /bin/kafka-storage random-uuid
+      - KAFKA_NODE_ID: 1
+
+      - KAFKA_PROCESS_ROLES: broker,controller # KRaft mode — no zookeeper
+      - KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093 # which clusters can vote on imp decisions
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # NO BACKUPS - JUST 1 COPY // default 3
+
+      - KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092, CONTROLLER://0.0.0.0:9093 # controller - for internal kafka cluster communication
+      - KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      - KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      - KAFKA_LOG_DIRS: /var/lib/kafka/data
+  # ---------------------------------------------------------------------------
+  # PHASE 3: MLflow + Storage (MinIO & Postgres)
+  # ---------------------------------------------------------------------------
+  # postgres:
+  #   image: postgres:13
+  #   # Holds the MLflow experiment metadata
+  #
+  # minio:
+  #   image: minio/minio
+  #   # Acts as a local S3 bucket to store our serialized models and datasets
+  #
+  # mlflow:
+  #   image: ghcr.io/mlflow/mlflow
+  #   # Connects to both Postgres and MinIO
+
+  # ---------------------------------------------------------------------------
+  # PHASE 4: Redis (Real-Time Velocity Features)
+  # ---------------------------------------------------------------------------
+  # redis:
+  #   image: redis:latest
+
+  # ---------------------------------------------------------------------------
+  # PHASE 6: Prefect (Orchestration & Retraining)
+  # ---------------------------------------------------------------------------
+  # prefect-server:
+  #   image: prefecthq/prefect:2-python3.10
+
+  # ---------------------------------------------------------------------------
+  # PHASE 7: Prometheus & Grafana (Observability)
+  # ---------------------------------------------------------------------------
+  # prometheus:
+  #   image: prom/prometheus
+  # grafana:
+  #   image: grafana/grafana

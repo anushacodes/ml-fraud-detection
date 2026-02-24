@@ -6,10 +6,10 @@ setup:
 	uv pip install -r requirements.txt
 
 data:
-	uv run python src/setup/data_prep.py
+	uv run python src/02_clean_prepare/data_prep.py
 
-# make train:
-# 	python src/train/train.py
+train:
+	uv run python src/03_training/xgboost_trainer.py
 
 # make score:
 # 	python src/score/score.py
