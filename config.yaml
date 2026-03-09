@@ -1,4 +1,3 @@
-
 # data paths
 data:
   train_path: "data/fraudTrain.csv"
@@ -8,3 +7,9 @@ data:
   X_test_path: "data/clean/X_test.csv"
   y_train_path: "data/clean/y_train.csv"
   y_test_path: "data/clean/y_test.csv"
+
+kafka:
+  csv_path: "data/fraudTest.csv"
+  topic: "raw-transactions"
+  broker: "localhost:9092"
+  msg_per_sec: 1000

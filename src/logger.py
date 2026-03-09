@@ -1,5 +1,3 @@
-"""setting up a custom logger"""
-
 import logging
 import sys
 
