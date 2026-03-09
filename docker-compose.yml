@@ -1,78 +1,91 @@
-# docker-compose.yml
-#
-# WHAT THIS FILE DOES:
-# This file is used by Docker to spin up all the infrastructure our pipeline needs (Kafka, Redis, MLflow, 
-# MinIO, Postgres, etc.) all at once, in isolated containers that can talk to each other.
-#
-# KAFKA CONCEPT (Beginner Friendly):
-# Kafka is essentially a high-throughput, real-time message bus. Imagine a busy restaurant kitchen. 
-# The ticket machine taking orders is the Kafka Producer. The line cooks reading the tickets are Kafka Consumers. 
-# The conveyor belt holding the tickets is the Kafka Topic. We need this because in the real world, 
-# fraud systems cannot wait for a batch file to finish uploading at midnight—they must score transactions 
-# the millisecond they occur. Kafka uses a tool called Zookeeper to help manage its state. 
-# So to run Kafka, you actually need TWO services: Zookeeper and Kafka broker.
-#
-# PREFECT CONCEPT (Beginner Friendly):
-# Prefect orchestration uses a local server to track flow runs. Imagine it as a highly sophisticated alarm 
-# clock and scheduler combined. We will eventually add a 'prefect-server' container here later to orchestrate our model retraining.
-
 version: '3.8'
 
 services:
-  # ---------------------------------------------------------------------------
-  # PHASE 2: Kafka & Zookeeper (The Messaging Backbone)
-  # ---------------------------------------------------------------------------
   kafka:
     image: confluentinc/cp-kafka:7.8.3
     container_name: fraud-kafka
-    ports: -"9092:9092"
-
+    ports:
+      - "9092:9092"
     environment:
-      - KAFKA_KRAFT_MODE: 'true' # new alt to zookeeper  
+      KAFKA_KRAFT_MODE: 'true'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:9093'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
 
-      - CLUSTER_ID: 'fraud-1234567890' # unique cluster id via /bin/kafka-storage random-uuid
-      - KAFKA_NODE_ID: 1
+  postgres:
+    image: postgres:13
+    container_name: fraud-postgres
+    environment:
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflowpassword
+      POSTGRES_DB: mlflowdb
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "mlflow"]
+      interval: 5s
+      retries: 5
 
-      - KAFKA_PROCESS_ROLES: broker,controller # KRaft mode — no zookeeper
-      - KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093 # which clusters can vote on imp decisions
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # NO BACKUPS - JUST 1 COPY // default 3
+  minio:
+    image: minio/minio
+    container_name: fraud-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
 
-      - KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092, CONTROLLER://0.0.0.0:9093 # controller - for internal kafka cluster communication
-      - KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      - KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  setup-minio:
+    image: minio/mc
+    container_name: fraud-setup-minio
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb myminio/mlflow;
+      exit 0;
+      "
 
-      - KAFKA_LOG_DIRS: /var/lib/kafka/data
-  # ---------------------------------------------------------------------------
-  # PHASE 3: MLflow + Storage (MinIO & Postgres)
-  # ---------------------------------------------------------------------------
-  # postgres:
-  #   image: postgres:13
-  #   # Holds the MLflow experiment metadata
-  #
-  # minio:
-  #   image: minio/minio
-  #   # Acts as a local S3 bucket to store our serialized models and datasets
-  #
-  # mlflow:
-  #   image: ghcr.io/mlflow/mlflow
-  #   # Connects to both Postgres and MinIO
+  mlflow:
+    image: ghcr.io/mlflow/mlflow
+    container_name: fraud-mlflow
+    depends_on:
+      - postgres
+      - minio
+    ports:
+      - "5001:5000"
+    environment:
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://mlflow:mlflowpassword@postgres:5432/mlflowdb
+      --default-artifact-root s3://mlflow
+      --host 0.0.0.0
 
-  # ---------------------------------------------------------------------------
-  # PHASE 4: Redis (Real-Time Velocity Features)
-  # ---------------------------------------------------------------------------
-  # redis:
-  #   image: redis:latest
+  redis:
+    image: redis:latest
+    container_name: fraud-redis
+    ports:
+      - "6379:6379"
 
-  # ---------------------------------------------------------------------------
-  # PHASE 6: Prefect (Orchestration & Retraining)
-  # ---------------------------------------------------------------------------
-  # prefect-server:
-  #   image: prefecthq/prefect:2-python3.10
+  prometheus:
+    image: prom/prometheus
+    container_name: fraud-prometheus
+    ports:
+      - "9090:9090"
 
-  # ---------------------------------------------------------------------------
-  # PHASE 7: Prometheus & Grafana (Observability)
-  # ---------------------------------------------------------------------------
-  # prometheus:
-  #   image: prom/prometheus
-  # grafana:
-  #   image: grafana/grafana
+  grafana:
+    image: grafana/grafana
+    container_name: fraud-grafana
+    ports:
+      - "3000:3000"
