@@ -16,27 +16,13 @@ A completely decoupled, event-driven real-time fraud detection pipeline. This re
 
 5. **`dash.py`** is a Streamlit dashboard showing model performance metrics (accuracy, precision, recall) over time with event markers for drift and retrain events.
 
-<img width="1449" height="821" alt="Screenshot 2026-03-09 at 9 02 32 PM" src="https://github.com/user-attachments/assets/2ee5e63e-ef3f-441d-b514-5ed3bc4d49dc" />
 
 
 ## Architecture
-```text
-fraudTest.csv
-     │
-     ▼
-kafka/producer.py ───────────────────────────────► raw-transactions topic
-                                                           │
-                                         ┌─────────────────┴──────────────────────┐
-                                         ▼                                         ▼
-                              inference/service.py                    monitoring/buffer_monitor.py
-                              ├── inference_prep.py (features)        ├── 30s sliding windows
-                              ├── model_loader.py  (MLflow model)     ├── Evidently drift check
-                              ├── redis_client.py  (velocity)         ├── MLflow metric logging
-                              └── metrics.py       (Prometheus :8001) └── Prefect retrain trigger
-                                         │                                         │
-                                         ▼                                         ▼
-                                  fraud-scores topic                   flows/retrain_flow.py (Prefect)
-```
+
+<img width="4743" height="1944" alt="Untitled-2026-03-09-2024" src="https://github.com/user-attachments/assets/c98a0413-c103-467a-aec1-4628d71fb48b" />
+
+
 
 ## Running It
 
@@ -123,5 +109,11 @@ The prometheus dashboard:
 
 
 https://github.com/user-attachments/assets/545bfb7f-6dbd-453a-ad80-14b72c87156e
+
+
+
+Streamlit dashboard:
+
+<img width="1449" height="821" alt="Screenshot 2026-03-09 at 9 02 32 PM" src="https://github.com/user-attachments/assets/2ee5e63e-ef3f-441d-b514-5ed3bc4d49dc" />
 
 
