@@ -5,7 +5,7 @@ import yaml
 from kafka import KafkaProducer
 
 # Kafka expects values as bytes, so we need to serialize the data.
-def stream_transactions(csv_path, topic, broker='localhost:9092', msg_per_sec=100):
+def stream_transactions(topic, broker='localhost:9092', msg_per_sec=100, csv_path='data/fraudTest.csv'):
     producer = KafkaProducer(
         bootstrap_servers=[broker],
         value_serializer=lambda x: json.dumps(x).encode('utf-8')

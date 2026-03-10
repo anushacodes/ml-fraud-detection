@@ -4,8 +4,8 @@ import pandas as pd
 import asyncio
 from aiokafka import AIOKafkaConsumer
 import mlflow
-from evidently.report import Report
-from evidently.metric_preset import DataDriftPreset
+from evidently import Report
+from evidently.presets import DataDriftPreset
 from src.inference.inference_prep import prepare_features
 from src.redis_client import get_redis_client, get_velocity
 import os
@@ -51,8 +51,8 @@ async def monitor_drift():
                     eval_df = eval_df[ref_df.columns] # alignment
                     
                     report = Report(metrics=[DataDriftPreset()])
-                    report.run(reference_data=ref_df, current_data=eval_df)
-                    drift_score = report.as_dict()["metrics"][0]["result"]["share_of_drifted_columns"]
+                    snap = report.run(reference_data=ref_df, current_data=eval_df)
+                    drift_score = snap.dict()["metrics"][0]["value"]["share"]
                     
                     print(f"Evaluated {len(buffer)} samples. Drift score: {drift_score:.2f}")
                     

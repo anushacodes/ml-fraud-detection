@@ -2,11 +2,12 @@ pandas
 scikit-learn
 xgboost
 kafka-python        
+aiokafka            
 fastapi             
 uvicorn             
 mlflow              
 prefect             
-evidently           
+evidently>=0.4.30    
 redis               
 boto3               
 s3fs                
